@@ -59,7 +59,11 @@ def remove_tcp_header(buf):
 
 def decode_record_data_40(record_data):
     user_sn = struct.unpack('<H', record_data[:2])[0]
-    device_user_id = record_data[2:11].decode('ascii', errors='ignore').split('\0')[0]
+    # MicroPython's str/bytes.decode may reject keyword arguments.
+    # ZKT user IDs are typically zero-padded ASCII text. Filter non-ASCII
+    # bytes without allocating a large intermediate string.
+    raw_user_id = record_data[2:11].split(b'\x00', 1)[0]
+    device_user_id = ''.join(chr(ch) for ch in raw_user_id if 32 <= ch <= 126)
     record_time = parse_time(struct.unpack('<I', record_data[27:31])[0])
     return {'user_sn': user_sn, 'device_user_id': device_user_id, 'record_time': record_time}
 
